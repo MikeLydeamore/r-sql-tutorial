@@ -74,7 +74,7 @@ Not great if you have "complex" data types (i.e. dates).
 ## Why SQL?
 I write a lot of 'elementary' SQL code - I am proficient but far from an expert.
 
-If you have a lot of data and need to do reasonably elementary manipulations, it can save _a lot_ of time.
+If you have a lot of data and need to do reasonably elementary manipulations, it can save _a lot_ of time. I would hazard a guess that any business that makes a notable amount of money has a SQL database somewhere (even Salesforce has it's own SQL implementation).
 
 My record is reducing an 8 hour computation done in R to <10 seconds in a SQL database.
 
@@ -127,11 +127,10 @@ db_table
 :::
 
 ## To work with a database
-Calculate the days between discharge and admission, by patient (non-SQL)
+Calculate the days between discharge and admission, by patient.
 
 ```{r}
 #| echo: true
-# Non-SQL solution:
 mega_db |>
     arrange(sID, Adate) |>
     group_by(sID) |>
@@ -175,6 +174,18 @@ sql_sort <- db_table |>
         days_between = (Adate - lag(Ddate)) / 86400
     )
 ```
+:::
+
+## `dbplyr` {.incremental}
+`dbplyr` is designed as a drop-in solution from `dplyr` for 'standard' (i.e. R-held) data. I guess it's a transpiler? Except SQL isn't compiled.
+
+* It will reduce the learning curve for writing actual SQL
+* It might make your data wrangling faster
+* It won't help you fit models
+* It won't make you a SQL developer
+
+::: {.fragment}
+It writes _reasonably_ efficient SQL code, but if you have something serious you will need to go back to the raw SQL
 :::
 
 ## Speed-test
@@ -356,4 +367,20 @@ Possibly _slightly_ faster, but at least no slower. Anecdotal evidence says that
 * All joins are in (very important!)
 * Has a `sql` passthrough for functions that aren't implemented
 * No complex math functions (this is a good thing)
+
+## Potential pitfalls
+
+::: {.fragment}
+[Beware!]{.highlight-red} `dbplyr` creates what is called a "temp table" every time you run an expression. If you're on your own database, this is unlikely to cause problems.
+:::
+::: {.fragment}
+If you're on someone elses production database, they will either
+1. Send you grumpy emails about the amount of space you're taking up or
+2. You'll be limited on the amount of space you can use at all
+:::
+::: {.fragment}
+There is **only one way** to remove `dbplyr` temp tables without restarting your R session (which technically closes your connection to the database). It involves deleting (by name) the temp tables with `dbRemoveTable`.
+
+Even closing with `dbDisconnect` won't clear the tables reliably, I think because R will sometimes 'soft' disconnect.
+:::
 

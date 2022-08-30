@@ -440,7 +440,7 @@
 <section id="why-sql" class="slide level2">
 <h2>Why SQL?</h2>
 <p>I write a lot of ‘elementary’ SQL code - I am proficient but far from an expert.</p>
-<p>If you have a lot of data and need to do reasonably elementary manipulations, it can save <em>a lot</em> of time.</p>
+<p>If you have a lot of data and need to do reasonably elementary manipulations, it can save <em>a lot</em> of time. I would hazard a guess that any business that makes a notable amount of money has a SQL database somewhere (even Salesforce has it’s own SQL implementation).</p>
 <p>My record is reducing an 8 hour computation done in R to &lt;10 seconds in a SQL database.</p>
 </section>
 <section id="to-build-a-database" class="slide level2">
@@ -506,15 +506,14 @@
 </section>
 <section id="to-work-with-a-database" class="slide level2">
 <h2>To work with a database</h2>
-<p>Calculate the days between discharge and admission, by patient (non-SQL)</p>
+<p>Calculate the days between discharge and admission, by patient.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="co"># Non-SQL solution:</span></span>
-<span id="cb8-2"><a href="#cb8-2"></a>mega_db <span class="sc">|&gt;</span></span>
-<span id="cb8-3"><a href="#cb8-3"></a>    <span class="fu">arrange</span>(sID, Adate) <span class="sc">|&gt;</span></span>
-<span id="cb8-4"><a href="#cb8-4"></a>    <span class="fu">group_by</span>(sID) <span class="sc">|&gt;</span></span>
-<span id="cb8-5"><a href="#cb8-5"></a>    <span class="fu">mutate</span>(</span>
-<span id="cb8-6"><a href="#cb8-6"></a>        <span class="at">days_between =</span> <span class="fu">difftime</span>(Adate, <span class="fu">shift</span>(Ddate, <span class="dv">1</span>), <span class="at">units =</span> <span class="st">"days"</span>)</span>
-<span id="cb8-7"><a href="#cb8-7"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a>mega_db <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2"></a>    <span class="fu">arrange</span>(sID, Adate) <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3"></a>    <span class="fu">group_by</span>(sID) <span class="sc">|&gt;</span></span>
+<span id="cb8-4"><a href="#cb8-4"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb8-5"><a href="#cb8-5"></a>        <span class="at">days_between =</span> <span class="fu">difftime</span>(Adate, <span class="fu">shift</span>(Ddate, <span class="dv">1</span>), <span class="at">units =</span> <span class="st">"days"</span>)</span>
+<span id="cb8-6"><a href="#cb8-6"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 25,124 × 5
 # Groups:   sID [10,000]
@@ -564,6 +563,19 @@
 <span id="cb12-6"><a href="#cb12-6"></a>        <span class="at">days_between =</span> (Adate <span class="sc">-</span> <span class="fu">lag</span>(Ddate)) <span class="sc">/</span> <span class="dv">86400</span></span>
 <span id="cb12-7"><a href="#cb12-7"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+</div>
+</section>
+<section id="dbplyr" class="slide level2 incremental">
+<h2><code>dbplyr</code></h2>
+<p><code>dbplyr</code> is designed as a drop-in solution from <code>dplyr</code> for ‘standard’ (i.e.&nbsp;R-held) data. I guess it’s a transpiler? Except SQL isn’t compiled.</p>
+<ul>
+<li>It will reduce the learning curve for writing actual SQL</li>
+<li>It might make your data wrangling faster</li>
+<li>It won’t help you fit models</li>
+<li>It won’t make you a SQL developer</li>
+</ul>
+<div class="fragment">
+<p>It writes <em>reasonably</em> efficient SQL code, but if you have something serious you will need to go back to the raw SQL</p>
 </div>
 </section>
 <section id="speed-test" class="slide level2">
@@ -728,6 +740,19 @@
 <li>Has a <code>sql</code> passthrough for functions that aren’t implemented</li>
 <li>No complex math functions (this is a good thing)</li>
 </ul>
+</section>
+<section id="potential-pitfalls" class="slide level2">
+<h2>Potential pitfalls</h2>
+<div class="fragment">
+<p><span class="highlight-red">Beware!</span> <code>dbplyr</code> creates what is called a “temp table” every time you run an expression. If you’re on your own database, this is unlikely to cause problems.</p>
+</div>
+<div class="fragment">
+<p>If you’re on someone elses production database, they will either 1. Send you grumpy emails about the amount of space you’re taking up or 2. You’ll be limited on the amount of space you can use at all</p>
+</div>
+<div class="fragment">
+<p>There is <strong>only one way</strong> to remove <code>dbplyr</code> temp tables without restarting your R session (which technically closes your connection to the database). It involves deleting (by name) the temp tables with <code>dbRemoveTable</code>.</p>
+<p>Even closing with <code>dbDisconnect</code> won’t clear the tables reliably, I think because R will sometimes ‘soft’ disconnect.</p>
+</div>
 <div class="footer footer-default">
 
 </div>
