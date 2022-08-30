@@ -7,6 +7,7 @@ execute:
     freeze: auto
 format: 
     revealjs:
+        slide-number: true
         theme: 
             - custom_theming.scss
 ---
@@ -140,8 +141,8 @@ mega_db |>
 ```
 
 ## To work with a database
+Non-SQL solution:
 ```r
-# Non-SQL solution:
 mega_db |>
     arrange(sID, Adate) |>
     group_by(sID) |>
@@ -149,6 +150,20 @@ mega_db |>
         days_between = difftime(Adate, shift(Ddate, 1), units = "days")
     )
 ```
+::: {.fragment}
+Native SQL solution
+```sql
+SELECT 
+    *,
+    (`Adate` - LAG(`Ddate`, 1, NULL) 
+        OVER (PARTITION BY `sID` ORDER BY `sID`, `Adate`)) / 86400.0  
+        AS `days_between`
+FROM
+    `patient_db`
+```
+:::
+::: {.fragment}
+`dbplyr` solution
 ```{r}
 #| echo: true
 #| code-line-numbers: "|3|6"
@@ -160,6 +175,7 @@ sql_sort <- db_table |>
         days_between = (Adate - lag(Ddate)) / 86400
     )
 ```
+:::
 
 ## Speed-test
 
