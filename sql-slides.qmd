@@ -1,6 +1,8 @@
 ---
 title: "A noobs guide to SQL in R"
 author: "Michael Lydeamore"
+project:
+    type: website
 format: 
     revealjs:
         theme: 
@@ -147,7 +149,7 @@ mega_db |>
 ```
 ```{r}
 #| echo: true
-#| code-line-numbers: "|2|6"
+#| code-line-numbers: "|3|6"
 # dbplyr/SQL solution:
 sql_sort <- db_table |>
     window_order(sID, Adate) |>

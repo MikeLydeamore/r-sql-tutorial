@@ -1,0 +1,4 @@
+- source: sql-slides.qmd
+  quarto-pub:
+    - id: 33688e12-a0c0-47e0-a843-21beb4716afc
+      url: 'https://quartopub.com/sites/mikelydeamore/a-noobs-guide-to-sql-in-r'
