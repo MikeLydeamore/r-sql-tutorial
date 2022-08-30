@@ -3,6 +3,8 @@ title: "A noobs guide to SQL in R"
 author: "Michael Lydeamore"
 project:
     type: website
+execute:
+    freeze: auto
 format: 
     revealjs:
         theme: 

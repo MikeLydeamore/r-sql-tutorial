@@ -544,7 +544,7 @@
 <span id="cb10-6"><a href="#cb10-6"></a>        <span class="at">days_between =</span> <span class="fu">difftime</span>(Adate, <span class="fu">shift</span>(Ddate, <span class="dv">1</span>), <span class="at">units =</span> <span class="st">"days"</span>)</span>
 <span id="cb10-7"><a href="#cb10-7"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb11" data-code-line-numbers="|2|6"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="co"># dbplyr/SQL solution:</span></span>
+<div class="sourceCode cell-code" id="cb11" data-code-line-numbers="|3|6"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="co"># dbplyr/SQL solution:</span></span>
 <span id="cb11-2"><a href="#cb11-2"></a>sql_sort <span class="ot">&lt;-</span> db_table <span class="sc">|&gt;</span></span>
 <span id="cb11-3"><a href="#cb11-3"></a>    <span class="fu">window_order</span>(sID, Adate) <span class="sc">|&gt;</span></span>
 <span id="cb11-4"><a href="#cb11-4"></a>    <span class="fu">group_by</span>(sID) <span class="sc">|&gt;</span></span>
