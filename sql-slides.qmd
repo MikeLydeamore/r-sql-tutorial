@@ -1,0 +1,339 @@
+---
+title: "A noobs guide to SQL in R"
+author: "Michael Lydeamore"
+format: 
+    revealjs:
+        theme: 
+            - custom_theming.scss
+---
+
+## What is SQL
+
+::: {.fragment}
+SQL stands for "Structured Query Language"
+:::
+::: {.fragment .fade-in}
+Designed to access data stored in relational database management system
+:::
+::: {.fragment .fade-in}
+Loads of these systems exist:
+:::
+::: {.incremental}
+* MySQL
+* Microsoft SQL
+* Oracle SQL
+* [SQLite]{.fragment .highlight-red}
+:::
+
+## SQLite
+
+A traditional SQL database requires it's own application (and these days gets it's own cloud machine).
+
+If you have a heavy application, or lots of users reading from a single database, then one should definitely take this approach.
+
+For today, and ease of use, we will use [SQLite]{.red}
+
+SQLite is an [embedded database]{.red}, so it is a file on a disk rather than a program.
+
+::: {.fragment}
+No special programs to install!
+:::
+
+## SQL as a System
+
+Great if you are an [_angry_]{.fragment .highlight-blue} person:
+
+```sql
+SELECT 
+    * 
+FROM
+    my_database
+WHERE
+    annoying_index IS NOT 0
+```
+
+::: {.fragment}
+Great if you need to do a lot of joining or merging
+```sql
+SELECT A.*, B.key_variable
+FROM my_database A
+LEFT JOIN other_database B
+ON A.id = B.id;
+```
+:::
+
+::: {.fragment}
+Not great if you have "complex" data types (i.e. dates).
+:::
+
+## Why SQL?
+I write a lot of 'elementary' SQL code - I am proficient but far from an expert.
+
+If you have a lot of data and need to do reasonably elementary manipulations, it can save _a lot_ of time.
+
+My record is reducing an 8 hour computation done in R to <10 seconds in a SQL database.
+
+## To build a database
+```{r, echo=F}
+library(HospitalNetwork)
+library(RSQLite)
+library(DBI)
+library(dbplyr)
+library(tidyverse)
+
+db <- dbConnect(
+    RSQLite::SQLite(), 
+    "mega-db.sqlite", # Database file name
+    extended_types = TRUE # Allows for things like Dates (sortof)
+)
+```
+```r
+# Not run
+library(HospitalNetwork)
+library(RSQLite)
+library(DBI)
+library(dbplyr)
+library(tidyverse)
+
+#mega_db <- create_fake_subjectDB(n_subjects = 10000, n_facilities = 120)
+#saveRDS(mega_db, "data/mega_db.RDS")
+
+db <- dbConnect(
+    RSQLite::SQLite(), 
+    "mega-db.sqlite", # Database file name
+    extended_types = TRUE # Allows for things like Dates (sortof)
+)
+dbWriteTable(db, "patient_db", mega_db, overwrite = TRUE)
+```
+
+## To build a database
+```{r}
+#| echo: true
+mega_db <- readRDS("data/mega_db.RDS")
+head(mega_db)
+```
+
+::: {.fragment}
+```{r}
+#| echo: true
+db_table <- tbl(db, "patient_db")
+db_table
+```
+:::
+
+## To work with a database
+Calculate the days between discharge and admission, by patient (non-SQL)
+
+```{r}
+#| echo: true
+# Non-SQL solution:
+mega_db |>
+    arrange(sID, Adate) |>
+    group_by(sID) |>
+    mutate(
+        days_between = difftime(Adate, shift(Ddate, 1), units = "days")
+    )
+```
+
+## To work with a database
+```r
+# Non-SQL solution:
+mega_db |>
+    arrange(sID, Adate) |>
+    group_by(sID) |>
+    mutate(
+        days_between = difftime(Adate, shift(Ddate, 1), units = "days")
+    )
+```
+```{r}
+#| echo: true
+#| code-line-numbers: "|2|6"
+# dbplyr/SQL solution:
+sql_sort <- db_table |>
+    window_order(sID, Adate) |>
+    group_by(sID) |>
+    mutate(
+        days_between = (Adate - lag(Ddate)) / 86400
+    )
+```
+
+## Speed-test
+
+```{r}
+#| cache: true
+microbenchmark::microbenchmark(
+    mega_db |>
+    arrange(sID, Adate) |>
+    group_by(sID) |>
+    mutate(
+        days_between = difftime(Adate, shift(Ddate, 1), units = "days")
+    ),
+    db_table |>
+    window_order(sID, Adate) |>
+    group_by(sID) |>
+    mutate(
+        days_between = (Adate - lag(Ddate)) / 86400
+    ),
+    unit = "seconds"
+)
+```
+
+::: {.fragment}
+This is a touch misleading, as the data hasn't been pulled into R.
+
+```{r}
+#| echo: true
+class(sql_sort)
+```
+
+:::
+
+::: {.fragment}
+We fix this using `collect()`
+:::
+
+## Collecting the results
+I don't really understand _how_ `collect()` works, but it pulls the data out of SQL and into a standard tibble to do anything else with.
+
+Wherever possible, keep your data in the database, and only collect at the end. It is slow and RAM heavy.
+
+## Collecting the results {auto-animate=true}
+
+```r
+db_table |>
+    window_order(sID, Adate) |>
+    group_by(sID) |>
+    mutate(
+        days_between = (Adate - lag(Ddate)) / 86400
+    )
+```
+
+## Collecting the results {auto-animate=true}
+
+```r
+db_table |>
+    window_order(sID, Adate) |>
+    group_by(sID) |>
+    mutate(
+        days_between = (Adate - lag(Ddate)) / 86400
+    ) |>
+    collect()
+```
+
+::: {.fragment}
+```{r}
+#| echo: false
+#| cache: true
+microbenchmark::microbenchmark(
+    db_table |>
+    window_order(sID, Adate) |>
+    group_by(sID) |>
+    mutate(
+        days_between = (Adate - lag(Ddate)) / 86400
+    ) |>
+    collect(),
+    unit = "seconds"
+)
+```
+:::
+
+## Using R variables
+
+This works just fine:
+```{r}
+#| results: hide
+#| echo: true
+id_vec <- sample(unique(mega_db$sID), size = 20)
+
+db_table |>
+    filter(sID %in% id_vec)
+```
+
+::: {.fragment}
+This does not.
+```r
+id_tibble <- tibble(id = sample(unique(mega_db$sID), size = 20))
+db_table |>
+    filter(sID %in% id_tibble$id)
+```
+:::
+
+::: {.fragment}
+Escape R computations with `!!`:
+```{r}
+#| echo: true
+#| results: hide
+id_tibble <- tibble(id = id_vec)
+db_table |>
+    filter(sID %in% !!id_tibble$id)
+```
+:::
+
+## Everything is a join (sortof)
+
+```{r join-functions}
+#| echo: true
+sql_filter <- function(id_vec) {
+    db_table |>
+    filter(sID %in% id_vec) |>
+    collect()
+}
+
+sql_inner_join <- function(id_tibble) {
+    db_table |>
+    inner_join(id_tibble, by=c("sID"="id"), copy = TRUE) |>
+    collect()
+}
+```
+
+## Everything is a join (sortof)
+```{r time-join-functions}
+#| echo: true
+#| cache: true
+microbenchmark::microbenchmark(
+    sql_filter(id_vec),
+    sql_inner_join(id_tibble),
+    unit = "seconds"
+)
+```
+
+::: {.fragment}
+This is slow because `dbplyr` is copying the inner join table every time
+:::
+
+## Everything is a join (sortof)
+```{r}
+#| echo: true
+dbWriteTable(db, "id_tibble", id_tibble, overwrite = TRUE)
+id_tibble_tbl <- tbl(db, "id_tibble")
+
+sql_join_copied <- function() {
+    db_table |>
+    inner_join(id_tibble_tbl, by=c("sID"="id")) |>
+    collect()
+}
+```
+
+::: {.fragment}
+```{r time-joins2}
+#| cache: true
+microbenchmark::microbenchmark(
+    sql_filter(id_vec),
+    sql_join_copied(),
+    unit = "seconds"
+)
+```
+:::
+
+::: {.fragment}
+Possibly _slightly_ faster, but at least no slower. Anecdotal evidence says that this is fast on massive filters.
+:::
+
+## What isn't in `dbplyr` {.incremental}
+
+* Pretty much all `dplyr` functions are in, sometimes you need some modification
+* No `lubridate` - dates are still a major PITA
+* All joins are in (very important!)
+* Has a `sql` passthrough for functions that aren't implemented
+* No complex math functions (this is a good thing)
+

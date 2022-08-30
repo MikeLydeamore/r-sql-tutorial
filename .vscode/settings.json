@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "database": "${workspaceFolder:r-sql-tutorial}/mega-db.sqlite",
+            "name": "example_patient_db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}
